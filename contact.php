@@ -2,7 +2,8 @@
 session_start();
 
 try {
-    $pdo = new PDO('mysql:host=localhost;dbname=cuttime;charset=utf8mb4', 'root', '');
+    // ПОДКЛЮЧАЕМСЯ К ТВОЕЙ БАЗЕ ДАННЫХmessages
+    $pdo = new PDO('mysql:host=localhost;dbname=messages;charset=utf8mb4', 'root', '');
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
     die("Ошибка подключения к базе данных: " . $e->getMessage());
@@ -32,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
+        // Запись в таблицу messages
         $stmt = $pdo->prepare('INSERT INTO messages (name, email, message) VALUES (?, ?, ?)');
         $stmt->execute([$name, $email, $message_text]);
         $sent = true;
@@ -43,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Контакты — CutTime</title>
+    <title>Контакты</title>
     <style>
         body { 
             font-family: 'Segoe UI', Arial, sans-serif; 
