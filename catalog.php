@@ -1,102 +1,75 @@
 <?php
-session_start();
+session_start(); // 
+require_once 'config/db.php'; // 
 
-// ИМИТАЦИЯ БАЗЫ ДАННЫХ (Список электроники прямо в коде)
-$all_products = [
-    ['id' => 1, 'name' => 'Смартфон FruitPhone 15', 'description' => '128 ГБ, черный, отличная камера и яркий экран.', 'price' => 450000],
-    ['id' => 2, 'name' => 'Ноутбук MacroBook Air 13', 'description' => 'Процессор M2, 8 ГБ ОЗУ, 256 ГБ SSD, тонкий корпус.', 'price' => 620000],
-    ['id' => 3, 'name' => 'Беспроводные наушники SoundBlast', 'description' => 'Активное шумоподавление, до 30 часов работы.', 'price' => 45000],
-    ['id' => 4, 'name' => 'Умные часы FitTrack 5', 'description' => 'Пульсометр, шагомер, защита от воды, экран AMOLED.', 'price' => 85000],
-    ['id' => 5, 'name' => 'Игровая приставка GameBox X', 'description' => 'Поддержка 4K, 1 ТБ памяти, в комплекте 1 геймпад.', 'price' => 290000],
-];
+$errors = []; // 
+$sent   = false; // 
+$name   = ''; // 
+$email  = ''; // 
+$message_text = ''; // 
 
-// 1. ПОЛУЧАЕМ ФИЛЬТРЫ ИЗ СТРОКИ БРАУЗЕРА
-$search    = trim($_GET['search']    ?? '');
-$max_price = intval($_GET['max_price'] ?? 0);
-$sort      = $_GET['sort'] ?? 'id';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') { // 
+    $name         = trim($_POST['name']    ?? ''); // 
+    $email        = trim($_POST['email']   ?? ''); // 
+    $message_text = trim($_POST['message'] ?? ''); // 
 
-// 2. ФИЛЬТРУЕМ НАШ СПИСОК ТОВАРОВ
-$products = [];
-foreach ($all_products as $p) {
-    // Фильтр по поиску
-    if (!empty($search) && mb_stripos($p['name'], $search) === false) {
-        continue;
+    // Валидация 
+    if (empty($name)) {
+        $errors[] = 'Введите ваше имя.'; // 
     }
-    // Фильтр по максимальной цене
-    if ($max_price > 0 && $p['price'] > $max_price) {
-        continue;
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) { // 
+        $errors[] = 'Введите корректный email.'; // 
     }
-    $products[] = $p;
+    if (empty($message_text)) {
+        $errors[] = 'Напишите ваше сообщение.'; // 
+    } elseif (mb_strlen($message_text) < 10) { // 
+        $errors[] = 'Сообщение слишком короткое (минимум 10 символов).'; // 
+    }
+
+    // Сохраняем в БД 
+    if (empty($errors)) { // 
+        $stmt = $pdo->prepare('INSERT INTO messages (name, email, message) VALUES (?, ?, ?)'); // 
+        $stmt->execute([$name, $email, $message_text]); // 
+
+        $sent  = true; // 
+        $name = $email = $message_text = ''; // 
+    }
 }
-
-// 3. СОРТИРУЕМ РЕЗУЛЬТАТЫ
-usort($products, function($a, $b) use ($sort) {
-    return match($sort) {
-        'price_asc'  => $a['price'] <=> $b['price'],
-        'price_desc' => $b['price'] <=> $a['price'],
-        'name'       => strnatcmp($a['name'], $b['name']),
-        default      => $a['id'] <=> $b['id'],
-    };
-});
-
-$count = count($products);
 ?>
-
 <!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Магазин электроники</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; background-color: #f4f6f9; color: #333; }
-        h1 { color: #2c3e50; }
-        form { margin-bottom: 30px; display: flex; gap: 15px; align-items: flex-end; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .filter-group { display: flex; flex-direction: column; gap: 5px; flex-grow: 1; }
-        input, select, button { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
-        input:focus, select:focus { outline: none; border-color: #3b82f6; }
-        button { background-color: #3b82f6; color: white; border: none; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+<html lang="ru"> <head>
+    <meta charset="UTF-8"> <title>Контакты — CutTime</title> <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 30px; background-color: #f4f6f9; color: #333; }
+        h1 { color: #2c3e50; margin-bottom: 25px; font-weight: bold; }
+        .nav-menu { margin-bottom: 20px; }
+        .nav-menu a { margin-right: 15px; color: #3b82f6; text-decoration: none; font-weight: bold; }
+        .container { max-width: 560px; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .form-group { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
+        label { font-size: 14px; font-weight: 600; color: #1e293b; }
+        input, textarea { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; width: 100%; box-sizing: border-box; }
+        input:focus, textarea:focus { outline: none; border-color: #3b82f6; }
+        button { background-color: #3b82f6; color: white; border: none; padding: 12px; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; transition: background 0.2s; width: 100%; }
         button:hover { background-color: #2563eb; }
-        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
-        .card { background: white; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s; }
-        .card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px rgba(0,0,0,0.05); }
-        .card h3 { margin-top: 0; color: #1e293b; font-size: 18px; }
-        .card p { color: #64748b; font-size: 14px; line-height: 1.5; margin: 10px 0; }
-        .price { font-weight: bold; color: #10b981; font-size: 1.3em; margin-bottom: 0; }
-        .reset-link { display: inline-block; margin-bottom: 12px; color: #64748b; text-decoration: none; border-bottom: 1px dashed; }
+        .alert { padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        .alert-success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+        .alert-error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+        .alert p { margin: 5px 0; }
+        .btn-link { display: inline-block; text-align: center; background: #64748b; color: #fff; text-decoration: none; padding: 10px; border-radius: 6px; margin-top: 10px; width: 100%; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
-  <h1>ElectroShop — Магазин электроники</h1>
+  <div class="nav-menu">
+      <a href="index.php">Главная</a>
+      <a href="catalog.php">Услуги</a>
+      <a href="contact.php">Контакты</a>
+  </div>
 
-  <form method="GET" action="">
-    
-    <div class="filter-group">
-      <label for="search">Поиск товара</label>
-      <input type="text" id="search" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Например: Смартфон">
-    </div>
+  <div class="container">
+      <h1 class="section__title">Обратная связь</h1> <?php if ($sent): ?> <div class="alert alert-success"> <p>Ваше сообщение отправлено! Мы свяжемся с вами в ближайшее время.</p> </div>
+          <a href="index.php" class="btn-link">На главную</a> <?php else: ?> <?php if (!empty($errors)): ?> <div class="alert alert-error"> <?php foreach ($errors as $e): ?> <p><?= htmlspecialchars($e) ?></p> <?php endforeach; ?> </div> <?php endif; ?> <form method="POST" action=""> <div class="form-group"> <label for="name">Ваше имя *</label> <input type="text" id="name" name="name" value="<?= htmlspecialchars($name) ?>" placeholder="Введите имя" required> </div> <div class="form-group"> <label for="email">Email *</label> <input type="email" id="email" name="email" value="<?= htmlspecialchars($email) ?>" placeholder="ваш@email.com" required> </div> <div class="form-group"> <label for="message">Сообщение *</label> <textarea id="message" name="message" rows="5" placeholder="Ваш вопрос или пожелание..." style="resize:vertical;" required><?= htmlspecialchars($message_text) ?></textarea> </div> <button type="submit">Отправить сообщение</button> </form>
+      <?php endif; ?>
+  </div>
 
-    <div class="filter-group">
-      <label for="max_price">Максимальная цена (₸)</label>
-      <input type="text" id="max_price" name="max_price" value="<?= $max_price > 0 ? $max_price : '' ?>" placeholder="500000">
-    </div>
-
-    <div class="filter-group">
-      <label for="sort">Сортировка</label>
-      <select id="sort" name="sort">
-        <option value="id" <?= $sort === 'id' ? 'selected' : '' ?>>По умолчанию</option>
-        <option value="price_asc" <?= $sort === 'price_asc' ? 'selected' : '' ?>>Сначала дешевые</option>
-        <option value="price_desc" <?= $sort === 'price_desc' ? 'selected' : '' ?>>Сначала дорогие</option>
-        <option value="name" <?= $sort === 'name' ? 'selected' : '' ?>>По названию (А-Я)</option>
-      </select>
-    </div>
-
-    <button type="submit">Найти</button>
-
-    <?php if ($search || $max_price || $sort !== 'id'): ?>
-      <a href="catalog.php" class="reset-link">Сбросить</a>
-    <?php endif; ?>
-
-  </form>
-
-  <div class="catalog-
+</body>
+</html>
